@@ -1,12 +1,11 @@
-import socket
-import threading
-import json
+from flask import Flask
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import random
 
 # Server Configuration
-HOST = "0.0.0.0"  # Listen on all interfaces
-PORT = 10000
-clients = {}  # {username: socket}
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+clients = {}  # {username: sid}
 questions = [
     "What is the capital of France?",
     "What is 2 + 2?",
@@ -15,80 +14,66 @@ questions = [
 ]
 
 
-def broadcast(message):
+def broadcast(event, data):
     """Send message to all players"""
-    for client in clients.values():
-        client.send(message.encode('utf-8'))
+    socketio.emit(event, data)
 
 
-def handle_client(client_socket, username):
-    """Handle communication with a player"""
-    try:
-        while True:
-            data = client_socket.recv(1024).decode("utf-8")
-            if data:
-                broadcast(f"{username}: {data}")  # Share message with all players
-    except:
-        print(f"{username} disconnected")
+@socketio.on("connect")
+def handle_connect():
+    print("A player has connected.")
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    username = None
+    for user, sid in clients.items():
+        if sid == request.sid:
+            username = user
+            break
+    if username:
         del clients[username]
-        client_socket.close()
+        print(f"{username} disconnected")
+        broadcast("player_left", username)
+
+
+@socketio.on("join")
+def handle_join(username):
+    clients[username] = request.sid
+    print(f"{username} joined the game.")
+    broadcast("player_joined", username)
+    if len(clients) >= 3:
+        socketio.start_background_task(start_game)
 
 
 def start_game():
     """Start the game loop"""
-    while True:
-        if len(clients) >= 3:  # Minimum players to start
-            print("Starting game...")
+    if len(clients) < 3:
+        return
 
-            # Select one random player to get a different question
-            odd_player = random.choice(list(clients.keys()))
-            question = random.choice(questions)
-            fake_question = "What is the speed of light?"  # Random fake question
+    print("Starting game...")
+    odd_player = random.choice(list(clients.keys()))
+    question = random.choice(questions)
+    fake_question = "What is the speed of light?"
 
-            # Send the same question to all except the odd one
-            for username, client in clients.items():
-                q_to_send = fake_question if username == odd_player else question
-                client.send(f"QUESTION:{q_to_send}".encode('utf-8'))
+    for username, sid in clients.items():
+        q_to_send = fake_question if username == odd_player else question
+        socketio.emit("question", {"question": q_to_send}, room=sid)
 
-            # Wait for answers
-            answers = {}
-            for username, client in clients.items():
-                data = client.recv(1024).decode("utf-8")
-                answers[username] = data
+    socketio.sleep(10)  # Wait for answers
 
-            # Reveal the common question
-            broadcast(f"REVEAL: The common question was: {question}")
+    # Reveal question and start voting
+    broadcast("reveal_question", {"question": question})
+    broadcast("start_voting", "Vote who had the fake question!")
 
-            # Voting phase
-            broadcast("VOTE: Who had the fake question? Type the username to vote.")
-            votes = {}
-            for username, client in clients.items():
-                vote = client.recv(1024).decode("utf-8")
-                votes[vote] = votes.get(vote, 0) + 1
+    votes = {}
+    for _ in range(len(clients)):
+        vote = socketio.wait_event("vote")
+        votes[vote] = votes.get(vote, 0) + 1
 
-            # Determine who gets voted out
-            voted_out = max(votes, key=votes.get)
-            broadcast(f"{voted_out} has been voted out!")
-
-        else:
-            print("Waiting for more players...")
+    voted_out = max(votes, key=votes.get)
+    broadcast("player_voted_out", voted_out)
 
 
-def accept_connections():
-    """Accept new players"""
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST, PORT))
-    server_socket.listen(5)
-    print("Server is running... Waiting for players.")
-
-    while True:
-        client_socket, addr = server_socket.accept()
-        username = client_socket.recv(1024).decode("utf-8")
-        clients[username] = client_socket
-        print(f"{username} joined the game.")
-        threading.Thread(target=handle_client, args=(client_socket, username), daemon=True).start()
-
-
-# Start server
-threading.Thread(target=start_game, daemon=True).start()
-accept_connections()
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=10000)
