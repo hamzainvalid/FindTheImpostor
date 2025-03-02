@@ -5,7 +5,7 @@ import random
 
 # Server Configuration
 HOST = "0.0.0.0"  # Listen on all interfaces
-PORT = 12345
+PORT = 10000
 clients = {}  # {username: socket}
 questions = [
     "What is the capital of France?",
