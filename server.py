@@ -38,12 +38,14 @@ def handle_disconnect():
 
 
 @socketio.on("join")
-def handle_join(username):
-    clients[username] = request.sid
+def handle_join(data):
+    username = data.get("username")  # ✅ Extract 'username' from the dictionary
+    if not username:
+        return  # Ignore if username is missing
+    clients[username] = request.sid  # ✅ Now it's a valid key
     print(f"{username} joined the game.")
     broadcast("player_joined", username)
-    if len(clients) >= 3:
-        socketio.start_background_task(start_game)
+
 
 
 def start_game():
