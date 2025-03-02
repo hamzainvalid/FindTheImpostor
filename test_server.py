@@ -7,7 +7,7 @@ import openai
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 clients = {}  # {username: sid}
-openai.api_key = "YOUR_OPENAI_API_KEY"
+openai.api_key = "OPENAI_API_KEY"
 
 
 def generate_question():
