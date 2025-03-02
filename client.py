@@ -1,7 +1,7 @@
 import tkinter as tk
 import socketio
 
-SERVER_URL = "https://findtheimpostor.onrender.com"  # Replace with your server URL
+SERVER_URL = "https://findtheimpostor-3tjo.onrender.com/"  # Replace with your server URL
 sio = socketio.Client()
 
 # Connect to server
