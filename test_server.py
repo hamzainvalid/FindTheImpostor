@@ -58,16 +58,15 @@ questions = generate_question()
 
 def start_game():
     """Start the game loop"""
-    if len(clients) < 3:
-        return
+
 
     print("Starting game...")
-    odd_player = random.choice(list(clients.keys()))
+
     question = random.choice(questions)
-    fake_question = "What is the speed of light?"
+
 
     for username, sid in clients.items():
-        q_to_send = fake_question if username == odd_player else question
+        q_to_send = question
         socketio.emit("question", {"question": q_to_send}, room=sid)
 
     socketio.sleep(10)  # Wait for answers
