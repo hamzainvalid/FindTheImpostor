@@ -1,25 +1,18 @@
 from flask import Flask, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import random
-import openai
 
 # Server Configuration
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 clients = {}  # {username: sid}
-openai.api_key = "YOUR_OPENAI_API_KEY"
+questions = [
+    "What is the capital of France?",
+    "What is 2 + 2?",
+    "Who wrote 'To Kill a Mockingbird'?",
+    "What is the largest planet in the Solar System?"
+]
 
-
-
-def generate_question():
-    prompt = "Generate a unique trivia question with four answer choices."
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    return response["choices"][0]["message"]["content"]
 
 def broadcast(event, data):
     """Send message to all players"""
@@ -54,7 +47,6 @@ def handle_join(data):
     broadcast("player_joined", username)
 
 
-questions = generate_question()
 
 def start_game():
     """Start the game loop"""
