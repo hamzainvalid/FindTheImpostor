@@ -78,7 +78,7 @@ def accept_connections():
     """Accept new players"""
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((HOST, PORT))
-    server_socket.listen(10)
+    server_socket.listen(5)
     print("Server is running... Waiting for players.")
 
     while True:
