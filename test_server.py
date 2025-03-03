@@ -7,6 +7,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 print("Server is running... Waiting for connections")
 clients = {}  # {username: sid}
+answers = {}
 questions = [
     "Who's most likely to forget someone's birthday?",
     "Who's most likely to win a Nobel Prize?",
@@ -88,15 +89,19 @@ def handle_disconnect():
 @socketio.on("join")
 def handle_join(data):
     username = data.get("username")  # ✅ Extract 'username' from the dictionary
-    print(f"{username} joined the game.")
     if not username:
         print('username not found')
         return  # Ignore if username is missing
     clients[username] = request.sid  # ✅ Now it's a valid key
     print(f"{username} joined the game.")
-    broadcast("player_joined", username)
+    broadcast("player_joined", {"username": username})
+    start_game()
 
-
+@socketio.on("submit_answer")
+def submit_answer(ans, user):
+    answer = ans.get("answer")
+    name = user.get("name")
+    answers[name] = answer
 
 def start_game():
     """Start the game loop"""
@@ -114,19 +119,21 @@ def start_game():
         q_to_send = fake_question if username == odd_player else question
         socketio.emit("question", {"question": q_to_send}, room=sid)
 
+    broadcast("timer", {"timer", 10})
     socketio.sleep(10)  # Wait for answers
 
     # Reveal question and start voting
     broadcast("reveal_question", {"question": question})
-    broadcast("start_voting", "Vote who had the fake question!")
+    socketio.sleep(5)
+    #broadcast("start_voting")
 
-    votes = {}
+    '''votes = {}
     for _ in range(len(clients)):
         vote = socketio.wait_event("vote")
         votes[vote] = votes.get(vote, 0) + 1
 
     voted_out = max(votes, key=votes.get)
-    broadcast("player_voted_out", voted_out)
+    broadcast("player_voted_out", voted_out)'''
 
 
 if __name__ == "__main__":

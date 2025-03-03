@@ -1,7 +1,7 @@
 import tkinter as tk
 import socketio
 
-SERVER_URL = "https://findtheimpostor.onrender.com"  # Replace with your server URL
+SERVER_URL = "http://127.0.0.1:10000"  # Replace with your server URL
 sio = socketio.Client()
 
 # Connect to server
@@ -20,11 +20,34 @@ def join_game():
     root.destroy()
     start_game_ui()
 
+@sio.on("timer")
+def timer(t):
+    timer = t.get("timer")
+    print(f'You have {timer} seconds to submit your input')
+
+@sio.on("player_joined")
+def player_joined(p):
+    player_name = p.get("username")
+    if player_name != 'Sajawal':
+        question_label.config(text=f"{player_name} has joined")
+    else:
+        question_label.config(text=f"Unfortunately {player_name} has joined")
 
 # Receive question
 @sio.on("question")
 def receive_question(q):
-    question_label.config(text=f"Your Question: {q}")
+    question = q.get("question")
+    question_label.config(text=f"Your Question: {question}")
+
+@sio.on("reveal_question")
+def reveal_question(data):
+    rq = data.get("question")
+    print("the question is: " + rq)
+
+
+@sio.on("start_voting")
+def start_voting():
+    print('Write the name of the person you think is the Impostor')
 
 
 # Create Game UI
@@ -40,7 +63,7 @@ def start_game_ui():
     answer_entry.pack()
 
     def submit_answer():
-        sio.emit("submit_answer", {"answer": answer_entry.get()})
+        sio.emit("submit_answer", {"answer": answer_entry.get(), "name": name_entry.get()})
 
     submit_btn = tk.Button(game_window, text="Submit", command=submit_answer)
     submit_btn.pack()
