@@ -119,7 +119,7 @@ def start_game():
         q_to_send = fake_question if username == odd_player else question
         socketio.emit("question", {"question": q_to_send}, room=sid)
 
-    broadcast("timer", {"timer", 10})
+    broadcast("timer", {"timer": 10})
     socketio.sleep(10)  # Wait for answers
 
     # Reveal question and start voting

@@ -1,9 +1,10 @@
 import tkinter as tk
 import socketio
 
-SERVER_URL = "http://127.0.0.1:10000"  # Replace with your server URL
+SERVER_URL = "https://findtheimpostor.onrender.com"  # Replace with your server URL
 sio = socketio.Client()
 name = ''
+player_names = []
 
 # Connect to server
 try:
@@ -30,21 +31,24 @@ def timer1(t):
 @sio.on("player_joined")
 def player_joined(p):
     player_name = p.get("username")
-    if player_name != 'Sajawal':
-        question_label.config(text=f"{player_name} has joined")
+    player_names.append(player_name)
+    '''if player_name != 'Sajawal':
+        player_label.config(text=player_name + " has joined \n")
     else:
-        question_label.config(text=f"Unfortunately {player_name} has joined")
+        player_label.config(text="Unfortunately {player_name} has joined \n")'''
 
 # Receive question
 @sio.on("question")
 def receive_question(q):
+    global question_label
     question = q.get("question")
-    question_label.config(text=f"Your Question: {question}")
+    question_label.config(text="Your Question: " + question)
 
 @sio.on("reveal_question")
 def reveal_question(data):
+    global empty_label
     rq = data.get("question")
-    print("the question is: " + rq)
+    empty_label.config(text = "the question is: " + rq)
 
 
 @sio.on("start_voting")
@@ -54,6 +58,8 @@ def start_voting():
 
 # Create Game UI
 def start_game_ui():
+    global empty_label
+    global player_label
     global question_label
     game_window = tk.Tk()
     game_window.title("Game")
@@ -69,6 +75,12 @@ def start_game_ui():
 
     submit_btn = tk.Button(game_window, text="Submit", command=submit_answer)
     submit_btn.pack()
+
+    empty_label = tk.Label(game_window, text="")
+    empty_label.pack()
+
+    player_label = tk.Label(game_window, text=player_names)
+    player_label.pack()
 
     game_window.mainloop()
 
