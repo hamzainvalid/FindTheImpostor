@@ -98,9 +98,9 @@ def handle_join(data):
     start_game()
 
 @socketio.on("submit_answer")
-def submit_answer(ans, user):
+def submit_answer(ans):
     answer = ans.get("answer")
-    name = user.get("name")
+    name = ans.get("name")
     answers[name] = answer
 
 def start_game():
@@ -137,4 +137,4 @@ def start_game():
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=10000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=10000)

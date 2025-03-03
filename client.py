@@ -3,6 +3,7 @@ import socketio
 
 SERVER_URL = "http://127.0.0.1:10000"  # Replace with your server URL
 sio = socketio.Client()
+name = ''
 
 # Connect to server
 try:
@@ -14,6 +15,7 @@ except Exception as e:
 
 # Join game
 def join_game():
+    global name
     name = name_entry.get()
     print("name written " + name)
     sio.emit("join", {"username": name})
@@ -21,7 +23,7 @@ def join_game():
     start_game_ui()
 
 @sio.on("timer")
-def timer(t):
+def timer1(t):
     timer = t.get("timer")
     print(f'You have {timer} seconds to submit your input')
 
@@ -61,9 +63,9 @@ def start_game_ui():
 
     answer_entry = tk.Entry(game_window)
     answer_entry.pack()
-
+    print(name)
     def submit_answer():
-        sio.emit("submit_answer", {"answer": answer_entry.get(), "name": name_entry.get()})
+        sio.emit("submit_answer", {"answer": answer_entry.get(), "name": name})
 
     submit_btn = tk.Button(game_window, text="Submit", command=submit_answer)
     submit_btn.pack()
