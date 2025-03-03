@@ -63,51 +63,7 @@ def join_game():
 # Start the game (only first player can do this)
 def start_game_request():
     sio.emit("start_game")
-    update_ui(start_button, "state", tk.DISABLED)
     update_ui(status_label, "text", "Starting game...")
-
-
-@sio.on("is_first_player")
-def set_first_player(data):
-    global is_first_player
-    is_first_player = data.get("is_first", False)
-    if is_first_player and start_button:
-        update_ui(start_button, "state", tk.NORMAL)
-        update_ui(status_label, "text", "You are the host. Click Start when everyone has joined.")
-
-
-@sio.on("game_started")
-def handle_game_started():
-    global game_started
-    game_started = True
-    if start_button:
-        update_ui(start_button, "state", tk.DISABLED)
-    update_ui(status_label, "text", "Game has started! Waiting for question...")
-
-
-@sio.on("timer")
-def timer_update(t):
-    global timer_value
-    timer_value = t.get("timer")
-    phase = t.get("phase", "answer")
-
-    if timer_label:
-        if phase == "answer":
-            update_ui(timer_label, "text", f"Time to answer: {timer_value} seconds")
-        elif phase == "discussion":
-            update_ui(timer_label, "text", f"Discussion time: {timer_value} seconds")
-        elif phase == "voting":
-            update_ui(timer_label, "text", f"Time to vote: {timer_value} seconds")
-
-    # Enable/disable appropriate inputs based on phase
-    if phase == "answer" and answer_entry:
-        update_ui(answer_entry, "state", tk.NORMAL)
-        if vote_entry:
-            update_ui(vote_entry, "state", tk.DISABLED)
-    elif phase == "voting" and vote_entry:
-        update_ui(vote_entry, "state", tk.NORMAL)
-        if answer_entry:
-            update_ui(answer_entry, "state", tk.DISABLED)
 
 
 @sio.on("player_joined")
@@ -133,14 +89,56 @@ def player_left(username):
         update_ui(player_label, "text", player_list_text)
 
 
-# Receive question
+# Receive question - only shown after game starts
 @sio.on("question")
 def receive_question(q):
-    global question
-    question = q.get("question")
-    if question_label:
-        update_ui(question_label, "text", "Your Question: " + question)
-    update_ui(status_label, "text", "Answer the question above!")
+    global question, game_started
+
+    # Only process questions if the game has started
+    if game_started:
+        question = q.get("question")
+        if question_label:
+            update_ui(question_label, "text", "Your Question: " + question)
+        update_ui(status_label, "text", "Answer the question above!")
+        # Enable the answer entry
+        if answer_entry:
+            update_ui(answer_entry, "state", tk.NORMAL)
+
+
+@sio.on("game_started")
+def handle_game_started():
+    global game_started
+    game_started = True
+    update_ui(status_label, "text", "Game has started! Waiting for question...")
+    if start_button:
+        update_ui(start_button, "state", tk.DISABLED)
+
+
+@sio.on("timer")
+def timer_update(t):
+    global timer_value
+    # Only process timer updates if the game has started
+    if game_started:
+        timer_value = t.get("timer")
+        phase = t.get("phase", "answer")
+
+        if timer_label:
+            if phase == "answer":
+                update_ui(timer_label, "text", f"Time to answer: {timer_value} seconds")
+            elif phase == "discussion":
+                update_ui(timer_label, "text", f"Discussion time: {timer_value} seconds")
+            elif phase == "voting":
+                update_ui(timer_label, "text", f"Time to vote: {timer_value} seconds")
+
+        # Enable/disable appropriate inputs based on phase
+        if phase == "answer" and answer_entry:
+            update_ui(answer_entry, "state", tk.NORMAL)
+            if vote_entry:
+                update_ui(vote_entry, "state", tk.DISABLED)
+        elif phase == "voting" and vote_entry:
+            update_ui(vote_entry, "state", tk.NORMAL)
+            if answer_entry:
+                update_ui(answer_entry, "state", tk.DISABLED)
 
 
 @sio.on("reveal_answers")
@@ -196,7 +194,7 @@ def reveal_impostor(data):
 # Create Game UI
 def start_game_ui():
     global status_label, question_label, player_label, game_window, timer_label
-    global answer_entry, vote_entry, answers_display, start_button
+    global answer_entry, vote_entry, answers_display, start_button, is_first_player
 
     game_window = tk.Tk()
     game_window.title("Find The Impostor")
@@ -206,22 +204,35 @@ def start_game_ui():
     frame = tk.Frame(game_window, padx=20, pady=20)
     frame.pack(fill=tk.BOTH, expand=True)
 
-    # Game controls (only for first player)
+    # Game controls (for all players, but only first can use it)
     control_frame = tk.Frame(frame)
     control_frame.pack(fill=tk.X, pady=5)
 
-    start_button = tk.Button(control_frame, text="Start Game", command=start_game_request, state=tk.DISABLED)
+    # Check if we're the first player by seeing if the list is empty before we joined
+    is_first_player = len(player_names) == 0
+
+    start_button = tk.Button(control_frame, text="Start Game", command=start_game_request)
+    # Only the first player can start the game
+    if is_first_player:
+        start_button.config(state=tk.NORMAL)
+    else:
+        start_button.config(state=tk.DISABLED)
     start_button.pack(side=tk.LEFT, padx=5)
 
     timer_label = tk.Label(control_frame, text="Waiting to start...", font=("Arial", 10, "bold"))
     timer_label.pack(side=tk.RIGHT, padx=5)
 
     # Status section
-    status_label = tk.Label(frame, text="Waiting for players to join...", font=("Arial", 10, "italic"), wraplength=560)
+    if is_first_player:
+        status_text = "You are the host. Click Start Game when everyone has joined."
+    else:
+        status_text = "Waiting for host to start the game..."
+
+    status_label = tk.Label(frame, text=status_text, font=("Arial", 10, "italic"), wraplength=560)
     status_label.pack(pady=5, fill=tk.X)
 
-    # Question section
-    question_label = tk.Label(frame, text="Waiting for question...", font=("Arial", 12, "bold"), wraplength=560)
+    # Question section - hidden until game starts
+    question_label = tk.Label(frame, text="Waiting for game to start...", font=("Arial", 12, "bold"), wraplength=560)
     question_label.pack(pady=10, fill=tk.X)
 
     # Answer section
@@ -276,12 +287,13 @@ def start_game_ui():
     answers_display.config(state=tk.DISABLED)  # Start as read-only
 
     # Player list section
+    player_names.append(name)  # Add ourselves to the list
     player_list_text = "Players: " + ", ".join(player_names)
     player_label = tk.Label(frame, text=player_list_text, font=("Arial", 10))
     player_label.pack(pady=10, fill=tk.X)
 
-    # Check if we're the first player
-    sio.emit("check_first_player", {"name": name})
+    # Register ourselves
+    sio.emit("player_joined", {"username": name})
 
     # Start the update loop for UI
     def update_loop():
