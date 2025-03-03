@@ -5,6 +5,7 @@ import random
 # Server Configuration
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+print("Server is running... Waiting for connections")
 clients = {}  # {username: sid}
 questions = [
     "Who's most likely to forget someone's birthday?",

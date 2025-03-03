@@ -5,7 +5,11 @@ SERVER_URL = "https://findtheimpostor.onrender.com"  # Replace with your server 
 sio = socketio.Client()
 
 # Connect to server
-sio.connect(SERVER_URL, wait_timeout=15)
+try:
+    sio.connect(SERVER_URL, wait_timeout=5)
+    print("Connected successfully!")
+except Exception as e:
+    print(f"Connection failed: {e}")
 
 
 # Join game
