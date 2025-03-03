@@ -11,6 +11,7 @@ sio.connect(SERVER_URL, wait_timeout=15)
 # Join game
 def join_game():
     name = name_entry.get()
+    print("name written " + name)
     sio.emit("join", {"username": name})
     root.destroy()
     start_game_ui()
