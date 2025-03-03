@@ -87,6 +87,7 @@ def handle_disconnect():
 @socketio.on("join")
 def handle_join(data):
     username = data.get("username")  # ✅ Extract 'username' from the dictionary
+    print(f"{username} joined the game.")
     if not username:
         return  # Ignore if username is missing
     clients[username] = request.sid  # ✅ Now it's a valid key
